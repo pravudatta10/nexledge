@@ -1,7 +1,5 @@
-version: '3.8'
-
 services:
-  # PostgreSQL with Vector Support (Primary DB)
+  # 1. PostgreSQL with pgvector (Long-term AI Memory)
   postgres:
     image: ankane/pgvector:latest
     container_name: nexledge-db
@@ -15,7 +13,7 @@ services:
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
 
-  # MongoDB (For Chat History & NoSQL data)
+  # 2. MongoDB (Flexible Chat History storage)
   mongodb:
     image: mongo:7.0
     container_name: nexledge-nosql
@@ -27,23 +25,40 @@ services:
     volumes:
       - ./data/mongo:/data/db
 
-  # Kafka (Event Bus for Service Communication)
-  zookeeper:
-    image: bitnami/zookeeper:latest
-    container_name: nexledge-zookeeper
-    environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes
+  # 3. Redis (High-speed Caching & Session Management)
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: nexledge-cache
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
 
+  # 4. Kafka in KRaft Mode (Modern, No-Zookeeper Event Bus)
   kafka:
-    image: bitnami/kafka:latest
+    image: confluentinc/cp-kafka:7.6.0
     container_name: nexledge-events
     ports:
-      - "9092:9092"
+      - "29092:29092"
     environment:
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
-    depends_on:
-      - zookeeper
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
 
-# Note: All data is persisted in your local ./infrastructure/data/ folder
+      # Use the container name (kafka) for the quorum, not localhost
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:9093'
+
+      # Define listeners for all roles
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:29092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092,EXTERNAL://localhost:29092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT'
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    volumes:
+      - ./data/kafka:/var/lib/kafka/data
