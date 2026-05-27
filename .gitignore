@@ -1,0 +1,31 @@
+# --- IDEs & Editors ---
+.idea/
+*.iml
+.vscode/
+.history/
+.project
+.classpath
+.settings/
+
+# --- Build & Output ---
+target/
+out/
+dist/
+.angular/
+bin/
+*.log
+
+# --- Dependencies ---
+node_modules/
+.m2/
+.gradle/
+
+# --- Secrets & Environment ---
+.env
+application-local.yml
+*.jks
+*.p12
+
+# --- Docker Persistence ---
+# We ignore the actual database data files to keep the repo light
+infrastructure/data/

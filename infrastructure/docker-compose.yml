@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with Vector Support (Primary DB)
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: nexledge-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: nexledge
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  # MongoDB (For Chat History & NoSQL data)
+  mongodb:
+    image: mongo:7.0
+    container_name: nexledge-nosql
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: nexledge
+    volumes:
+      - ./data/mongo:/data/db
+
+  # Kafka (Event Bus for Service Communication)
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: nexledge-zookeeper
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: nexledge-events
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+    depends_on:
+      - zookeeper
+
+# Note: All data is persisted in your local ./infrastructure/data/ folder
